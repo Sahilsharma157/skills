@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Sensor Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(45deg, #00d4ff, #ff6b6b, #4ecdc4, #45b7d1);
+            background-size: 400% 400%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: gradientShift 3s ease-in-out infinite;
+            margin-bottom: 10px;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: #888;
+            font-weight: 300;
+        }
+
+        .back-button {
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: #fff;
+            padding: 12px 16px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-50%) scale(1.05);
+        }
+
+        .home-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            margin-top: 50px;
+        }
+
+        .category-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 24px;
+            padding: 40px 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 2px solid transparent;
+            backdrop-filter: blur(20px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .category-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transform: translateX(-100%);
+            transition: transform 0.6s;
+        }
+
+        .category-card:hover::before {
+            transform: translateX(100%);
+        }
+
+        .category-card:hover {
+            transform: translateY(-10px) scale(1.02);
+            border-color: rgba(255, 255, 255, 0.3);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .category-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            display: block;
+            filter: drop-shadow(0 0 20px currentColor);
+        }
+
+        .thermal { color: #ff6b6b; }
+        .electrical { color: #4ecdc4; }
+        .mechanical { color: #45b7d1; }
+        .chemical { color: #96ceb4; }
+
+        .category-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .category-description {
+            color: #aaa;
+            font-size: 1rem;
+            line-height: 1.4;
+        }
+
+        .sensors-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .sensor-button {
+            background: rgba(255, 255, 255, 0.08);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            padding: 20px;
+            border-radius: 16px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .sensor-button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+            transition: all 0.3s ease;
+            transform: translate(-50%, -50%);
+        }
+
+        .sensor-button:hover::before {
+            width: 200px;
+            height: 200px;
+        }
+
+        .sensor-button:hover {
+            transform: translateY(-3px);
+            border-color: rgba(255, 255, 255, 0.3);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+            margin-top: 30px;
+        }
+
+        .option-card {
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            backdrop-filter: blur(15px);
+        }
+
+        .option-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .option-icon {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .option-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .chart-container {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 30px;
+            margin-top: 30px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 400px;
+            margin-top: 20px;
+        }
+
+        .chart-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #fff;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 1.2rem;
+            color: #888;
+        }
+
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #333;
+            border-top: 2px solid #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .home-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .category-card {
+                padding: 30px 20px;
+            }
+
+            .category-icon {
+                font-size: 3rem;
+            }
+
+            .sensors-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                gap: 15px;
+            }
+
+            .sensor-button {
+                padding: 15px;
+                font-size: 1rem;
+            }
+
+            .chart-wrapper {
+                height: 300px;
+            }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <button class="back-button hidden" id="backButton">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <h1>Sensor Dashboard</h1>
+            <p class="subtitle">Real-time monitoring and analytics</p>
+        </div>
+
+        <!-- Home Screen -->
+        <div id="homeScreen">
+            <div class="home-grid">
+                <div class="category-card thermal" data-category="thermal">
+                    <i class="fas fa-thermometer-half category-icon"></i>
+                    <h3 class="category-title">Thermal</h3>
+                    <p class="category-description">Temperature sensors and thermal monitoring</p>
+                </div>
+                <div class="category-card electrical" data-category="electrical">
+                    <i class="fas fa-bolt category-icon"></i>
+                    <h3 class="category-title">Electrical</h3>
+                    <p class="category-description">Current, voltage, and resistance monitoring</p>
+                </div>
+                <div class="category-card mechanical" data-category="mechanical">
+                    <i class="fas fa-cog category-icon"></i>
+                    <h3 class="category-title">Mechanical</h3>
+                    <p class="category-description">Pressure, vibration, and motion sensors</p>
+                </div>
+                <div class="category-card chemical" data-category="chemical">
+                    <i class="fas fa-flask category-icon"></i>
+                    <h3 class="category-title">Chemical</h3>
+                    <p class="category-description">Gas, pH, and chemical composition</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sensors Screen -->
+        <div id="sensorsScreen" class="hidden">
+            <div class="sensors-grid" id="sensorsGrid"></div>
+        </div>
+
+        <!-- Options Screen -->
+        <div id="optionsScreen" class="hidden">
+            <div class="options-grid" id="optionsGrid"></div>
+        </div>
+
+        <!-- Chart Screen -->
+        <div id="chartScreen" class="hidden">
+            <div class="chart-container">
+                <h3 class="chart-title" id="chartTitle"></h3>
+                <div class="chart-wrapper">
+                    <canvas id="sensorChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class SensorDashboard {
+            constructor() {
+                this.currentScreen = 'home';
+                this.currentCategory = null;
+                this.currentSensor = null;
+                this.currentChart = null;
+                this.navigationStack = [];
+                
+                this.sensorConfig = {
+                    thermal: { count: 10, prefix: 'T', icon: 'fas fa-thermometer-half', color: '#ff6b6b' },
+                    electrical: { count: 5, prefix: 'E', icon: 'fas fa-bolt', color: '#4ecdc4' },
+                    mechanical: { count: 5, prefix: 'M', icon: 'fas fa-cog', color: '#45b7d1' },
+                    chemical: { count: 5, prefix: 'C', icon: 'fas fa-flask', color: '#96ceb4' }
+                };
+
+                this.electricalMetrics = [
+                    { name: 'Current', icon: 'fas fa-wave-square', unit: 'A' },
+                    { name: 'Voltage', icon: 'fas fa-plug', unit: 'V' },
+                    { name: 'Internal Resistance', icon: 'fas fa-resistor', unit: 'Ω' }
+                ];
+
+                this.chartTypes = [
+                    { name: 'Line Chart', icon: 'fas fa-chart-line', type: 'line' },
+                    { name: 'Bar Chart', icon: 'fas fa-chart-bar', type: 'bar' },
+                    { name: 'Pie Chart', icon: 'fas fa-chart-pie', type: 'pie' }
+                ];
+
+                this.init();
+            }
+
+            init() {
+                this.bindEvents();
+                this.showScreen('home');
+            }
+
+            bindEvents() {
+                // Category cards
+                document.querySelectorAll('.category-card').forEach(card => {
+                    card.addEventListener('click', (e) => {
+                        const category = e.currentTarget.dataset.category;
+                        this.showSensors(category);
+                    });
+                });
+
+                // Back button
+                document.getElementById('backButton').addEventListener('click', () => {
+                    this.goBack();
+                });
+
+                // Add pulse effect on hover
+                document.querySelectorAll('.category-card').forEach(card => {
+                    card.addEventListener('mouseenter', () => {
+                        card.classList.add('pulse');
+                    });
+                    card.addEventListener('mouseleave', () => {
+                        card.classList.remove('pulse');
+                    });
+                });
+            }
+
+            showScreen(screen) {
+                // Hide all screens
+                document.querySelectorAll('#homeScreen, #sensorsScreen, #optionsScreen, #chartScreen').forEach(s => {
+                    s.classList.add('hidden');
+                });
+
+                // Show target screen
+                document.getElementById(screen + 'Screen').classList.remove('hidden');
+
+                // Show/hide back button
+                const backButton = document.getElementById('backButton');
+                if (screen === 'home') {
+                    backButton.classList.add('hidden');
+                } else {
+                    backButton.classList.remove('hidden');
+                }
+
+                this.currentScreen = screen;
+            }
+
+            showSensors(category) {
+                this.navigationStack.push({ screen: 'home' });
+                this.currentCategory = category;
+                
+                const config = this.sensorConfig[category];
+                const sensorsGrid = document.getElementById('sensorsGrid');
+                sensorsGrid.innerHTML = '';
+
+                for (let i = 1; i <= config.count; i++) {
+                    const sensorButton = document.createElement('div');
+                    sensorButton.className = 'sensor-button';
+                    sensorButton.innerHTML = `
+                        <i class="${config.icon}" style="color: ${config.color}; margin-right: 10px;"></i>
+                        ${config.prefix}${i}
+                    `;
+                    sensorButton.addEventListener('click', () => {
+                        this.selectSensor(`${config.prefix}${i}`);
+                    });
+                    sensorsGrid.appendChild(sensorButton);
+                }
+
+                this.showScreen('sensors');
+            }
+
+            selectSensor(sensorId) {
+                this.navigationStack.push({ screen: 'sensors', category: this.currentCategory });
+                this.currentSensor = sensorId;
+
+                if (this.currentCategory === 'electrical') {
+                    this.showElectricalOptions();
+                } else {
+                    this.showChartOptions();
+                }
+            }
+
+            showElectricalOptions() {
+                const optionsGrid = document.getElementById('optionsGrid');
+                optionsGrid.innerHTML = '';
+
+                this.electricalMetrics.forEach(metric => {
+                    const optionCard = document.createElement('div');
+                    optionCard.className = 'option-card';
+                    optionCard.innerHTML = `
+                        <i class="${metric.icon} option-icon" style="color: #4ecdc4;"></i>
+                        <h4 class="option-title">${metric.name}</h4>
+                        <p style="color: #888;">Unit: ${metric.unit}</p>
+                    `;
+                    optionCard.addEventListener('click', () => {
+                        this.showChart('line', `${this.currentSensor} - ${metric.name}`, metric.unit);
+                    });
+                    optionsGrid.appendChild(optionCard);
+                });
+
+                this.showScreen('options');
+            }
+
+            showChartOptions() {
+                const optionsGrid = document.getElementById('optionsGrid');
+                optionsGrid.innerHTML = '';
+
+                this.chartTypes.forEach(chartType => {
+                    const optionCard = document.createElement('div');
+                    optionCard.className = 'option-card';
+                    optionCard.innerHTML = `
+                        <i class="${chartType.icon} option-icon" style="color: ${this.sensorConfig[this.currentCategory].color};"></i>
+                        <h4 class="option-title">${chartType.name}</h4>
+                    `;
+                    optionCard.addEventListener('click', () => {
+                        this.showChart(chartType.type, `${this.currentSensor} - ${chartType.name}`);
+                    });
+                    optionsGrid.appendChild(optionCard);
+                });
+
+                this.showScreen('options');
+            }
+
+            showChart(type, title, unit = '') {
+                this.navigationStack.push({ screen: 'options', category: this.currentCategory, sensor: this.currentSensor });
+                
+                document.getElementById('chartTitle').textContent = title;
+                this.showScreen('chart');
+
+                // Destroy existing chart
+                if (this.currentChart) {
+                    this.currentChart.destroy();
+                }
+
+                // Generate random data
+                const data = this.generateRandomData(type);
+                
+                // Create new chart
+                const ctx = document.getElementById('sensorChart').getContext('2d');
+                
+                const config = {
+                    type: type,
+                    data: data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: '#ffffff',
+                                    font: {
+                                        size: 14
+                                    }
+                                }
+                            }
+                        },
+                        scales: type !== 'pie' ? {
+                            x: {
+                                ticks: {
+                                    color: '#ffffff',
+                                    font: {
+                                        size: 12
+                                    }
+                                },
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                }
+                            },
+                            y: {
+                                ticks: {
+                                    color: '#ffffff',
+                                    font: {
+                                        size: 12
+                                    },
+                                    callback: function(value) {
+                                        return value + (unit ? ' ' + unit : '');
+                                    }
+                                },
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                }
+                            }
+                        } : {}
+                    }
+                };
+
+                this.currentChart = new Chart(ctx, config);
+
+                // Simulate real-time updates
+                this.startRealTimeUpdates();
+            }
+
+            generateRandomData(type) {
+                const labels = [];
+                const dataPoints = [];
+                const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57', '#ff9ff3', '#54a0ff', '#5f27cd'];
+
+                if (type === 'pie') {
+                    for (let i = 1; i <= 5; i++) {
+                        labels.push(`Segment ${i}`);
+                        dataPoints.push(Math.floor(Math.random() * 100) + 10);
+                    }
+                    return {
+                        labels: labels,
+                        datasets: [{
+                            data: dataPoints,
+                            backgroundColor: colors.slice(0, 5),
+                            borderColor: '#ffffff',
+                            borderWidth: 2
+                        }]
+                    };
+                } else {
+                    for (let i = 1; i <= 10; i++) {
+                        labels.push(`Point ${i}`);
+                        dataPoints.push(Math.floor(Math.random() * 100) + 10);
+                    }
+                    return {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Sensor Data',
+                            data: dataPoints,
+                            backgroundColor: type === 'line' ? 'rgba(78, 205, 196, 0.2)' : colors[0],
+                            borderColor: '#4ecdc4',
+                            borderWidth: 3,
+                            fill: type === 'line',
+                            tension: 0.4
+                        }]
+                    };
+                }
+            }
+
+            startRealTimeUpdates() {
+                if (this.updateInterval) {
+                    clearInterval(this.updateInterval);
+                }
+
+                this.updateInterval = setInterval(() => {
+                    if (this.currentChart && this.currentScreen === 'chart') {
+                        const dataset = this.currentChart.data.datasets[0];
+                        
+                        if (this.currentChart.config.type === 'pie') {
+                            // Update pie chart data
+                            dataset.data = dataset.data.map(() => Math.floor(Math.random() * 100) + 10);
+                        } else {
+                            // Update line/bar chart data
+                            dataset.data = dataset.data.map(() => Math.floor(Math.random() * 100) + 10);
+                        }
+                        
+                        this.currentChart.update('none');
+                    }
+                }, 2000);
+            }
+
+            goBack() {
+                if (this.updateInterval) {
+                    clearInterval(this.updateInterval);
+                }
+
+                if (this.navigationStack.length > 0) {
+                    const previousState = this.navigationStack.pop();
+                    
+                    if (previousState.screen === 'home') {
+                        this.showScreen('home');
+                        this.currentCategory = null;
+                        this.currentSensor = null;
+                    } else if (previousState.screen === 'sensors') {
+                        this.currentCategory = previousState.category;
+                        this.showSensors(this.currentCategory);
+                    } else if (previousState.screen === 'options') {
+                        this.currentCategory = previousState.category;
+                        this.currentSensor = previousState.sensor;
+                        if (this.currentCategory === 'electrical') {
+                            this.showElectricalOptions();
+                        } else {
+                            this.showChartOptions();
+                        }
+                    }
+                } else {
+                    this.showScreen('home');
+                }
+            }
+        }
+
+        // Initialize the dashboard when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new SensorDashboard();
+        });
+    </script>
+</body>
+</html>
